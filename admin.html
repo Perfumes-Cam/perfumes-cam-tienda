@@ -149,16 +149,16 @@ button{background:#d6b56d;color:#111;border:0;font-weight:bold;cursor:pointer}
 <script>
 
 const SUPABASE_URL = "https://aymqmhgsxbckhutrtpvw.supabase.co";
+
 const SUPABASE_KEY = localStorage.getItem("supabase_publishable_key") ||
-  prompt("sb_publishable_c0VBOKa-ilQbVFjIVUEu4w_z5xeNW-W (sb_publishable_)");
+  prompt("Pega tu clave pública de Supabase");
 
 if (SUPABASE_KEY) {
   localStorage.setItem("supabase_publishable_key", SUPABASE_KEY);
 }
-const SUPABASE_KEY = "sb_publishable_c0VBOKa-ilQbVFjIVUEu4w_z5xeNW-W";
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+  
 let products = [];
 
 function message(text){
