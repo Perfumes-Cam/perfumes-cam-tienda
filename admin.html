@@ -2,299 +2,359 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Administrador | Perfumes Cam</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<style>
-*{box-sizing:border-box}
-body{margin:0;padding:18px;background:#101010;color:#fff;font-family:Arial,sans-serif}
-main{max-width:750px;margin:auto}
-h1,h2{color:#d6b56d}
-.card{background:#1c1c1c;padding:18px;border-radius:12px;margin:16px 0}
-input,select,button{width:100%;padding:13px;margin:7px 0;border-radius:7px;border:1px solid #555;font-size:16px}
-input,select{background:#292929;color:white}
-button{background:#d6b56d;color:#111;border:0;font-weight:bold;cursor:pointer}
-.secondary{background:#444;color:white}
-.danger{background:#9e3030;color:white}
-.hidden{display:none!important}
-#message{color:#e8c879;white-space:pre-wrap;overflow-wrap:anywhere}
-.product{display:flex;gap:10px;align-items:center;border-bottom:1px solid #444;padding:12px 0}
-.product img,.no-photo{width:65px;height:65px;object-fit:cover;border-radius:7px;flex-shrink:0}
-.no-photo{background:#333;display:grid;place-items:center;font-size:11px;text-align:center}
-.product-info{flex:1;min-width:0}
-.product-info strong{display:block;overflow-wrap:anywhere}
-.product-info small{color:#bbb}
-.actions{display:flex;flex-direction:column;gap:4px;width:76px}
-.actions button{padding:8px 4px;margin:2px 0;font-size:12px}
-.top{display:flex;align-items:center;gap:10px}
-.top h2{flex:1}
-.top button{width:auto}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administrador | Perfumes Cam</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;padding:20px;
+      background:#101010;color:#fff;
+      font-family:Arial,sans-serif
+    }
+    .container{max-width:900px;margin:auto}
+    h1{color:#d8b45b;text-align:center}
+    h2{color:#d8b45b}
+    .panel{
+      background:#1c1c1c;padding:20px;
+      border-radius:12px;margin:18px 0
+    }
+    input,select{
+      width:100%;padding:13px;margin:7px 0 14px;
+      border:1px solid #555;border-radius:7px;
+      background:#292929;color:white;font-size:16px
+    }
+    button{
+      border:0;border-radius:7px;padding:12px 16px;
+      font-size:15px;font-weight:bold;cursor:pointer;
+      margin:4px
+    }
+    .primary{background:#d8b45b;color:#111}
+    .secondary{background:#444;color:white}
+    .danger{background:#a83232;color:white}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .product{
+      display:flex;align-items:center;gap:12px;
+      padding:12px 0;border-bottom:1px solid #444;
+      flex-wrap:wrap
+    }
+    .product img{
+      width:65px;height:65px;object-fit:contain;
+      background:#292929;border-radius:8px
+    }
+    .details{flex:1;min-width:130px}
+    .details strong{display:block;margin-bottom:5px}
+    .muted{color:#aaa;font-size:13px}
+    #message{padding:10px;color:#e5c875;white-space:pre-wrap}
+    .hidden{display:none}
+    label{display:block;color:#ddd;margin-top:8px}
+    @media(max-width:500px){
+      body{padding:12px}
+      .panel{padding:14px}
+      .product{gap:8px}
+    }
+  </style>
 </head>
-
 <body>
-<main>
-<h1>Perfumes Cam</h1>
-<p>Panel de administración</p>
+<div class="container">
+  <h1>PERFUMES CAM</h1>
+  <p style="text-align:center;color:#aaa">Panel de administración</p>
 
-<section id="login" class="card">
-<h2>Iniciar sesión</h2>
-<input id="email" type="email" placeholder="Correo del administrador">
-<input id="password" type="password" placeholder="Contraseña">
-<button id="loginButton" type="button">Entrar</button>
-</section>
+  <div id="loginPanel" class="panel">
+    <h2>Iniciar sesión</h2>
+    <form id="loginForm">
+      <label>Correo electrónico</label>
+      <input id="email" type="email" required autocomplete="username">
+      <label>Contraseña</label>
+      <input id="password" type="password" required autocomplete="current-password">
+      <button class="primary" id="loginButton" type="submit">Entrar</button>
+    </form>
+  </div>
 
-<section id="panel" class="hidden">
+  <div id="adminPanel" class="hidden">
+    <div style="text-align:right">
+      <button class="secondary" id="logoutButton">Cerrar sesión</button>
+    </div>
 
-<div class="card">
-<div class="top">
-<h2>Administrar productos</h2>
-<button id="logoutButton" type="button" class="secondary">Salir</button>
+    <div class="panel">
+      <h2 id="formTitle">Agregar producto</h2>
+      <form id="productForm">
+        <input type="hidden" id="productId">
+
+        <label>Nombre del producto</label>
+        <input id="name" type="text" required placeholder="Ej. Odyssey Mega">
+
+        <label>Marca</label>
+        <input id="brand" type="text" placeholder="Ej. Armaf">
+
+        <label>Categoría</label>
+        <select id="category">
+          <option value="Perfumes">Perfumes</option>
+          <option value="Decants">Decants</option>
+          <option value="Otros">Otros</option>
+        </select>
+
+        <label>Precio (dejar vacío para mostrar Precio por consultar)</label>
+        <input id="price" type="number" min="0" step="0.01" placeholder="Ej. 900">
+
+        <label>Fotografía del producto</label>
+        <input id="photo" type="file" accept="image/*">
+        <p class="muted" id="photoHelp">Si no seleccionas una fotografía, se conservará la actual al editar.</p>
+
+        <button class="primary" id="saveButton" type="submit">Guardar producto</button>
+        <button class="secondary" id="cancelButton" type="button">Cancelar</button>
+      </form>
+      <div id="message"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Productos registrados</h2>
+      <input id="search" type="search" placeholder="Buscar producto...">
+      <p id="productCount" class="muted"></p>
+      <div id="productList"></div>
+    </div>
+  </div>
 </div>
-
-<form id="productForm">
-<input id="productId" type="hidden">
-
-<label>Nombre del producto</label>
-<input id="name" required placeholder="Ej. Odyssey Mega">
-
-<label>Marca</label>
-<input id="brand" placeholder="Ej. ARMAF">
-
-<label>Categoría</label>
-<select id="category">
-<option value="Perfumes">Perfumes</option>
-<option value="Decants">Decants</option>
-<option value="Otros">Otros</option>
-</select>
-
-<label>Precio en pesos</label>
-<input id="price" type="number" min="0" step="0.01" placeholder="Vacío = Precio por consultar">
-
-<label>Fotografía</label>
-<input id="photo" type="file" accept="image/*">
-
-<button id="saveButton" type="submit">Guardar producto</button>
-<button type="button" id="clearButton" class="secondary">Limpiar formulario</button>
-</form>
-</div>
-
-<div class="card">
-<h2>Catálogo de productos</h2>
-<input id="search" placeholder="Buscar producto..." >
-<div id="products"></div>
-</div>
-
-</section>
-
-<p id="message"></p>
-</main>
 
 <script>
+"use strict";
+
 const SUPABASE_URL = "https://aymqmhgsxbckhutrtpvw.supabase.co";
+const KEY_NAME = "supabase_publishable_key";
 
-let SUPABASE_KEY = localStorage.getItem("supabase_publishable_key");
+let SUPABASE_KEY = localStorage.getItem(KEY_NAME);
 
-if(!SUPABASE_KEY){
-  SUPABASE_KEY = window.prompt("Pega tu clave pública de Supabase (sb_publishable_)");
-  if(SUPABASE_KEY && SUPABASE_KEY.trim()){
+if (!SUPABASE_KEY) {
+  SUPABASE_KEY = prompt("Pega tu clave pública de Supabase (sb_publishable_)");
+  if (SUPABASE_KEY && SUPABASE_KEY.trim()) {
     SUPABASE_KEY = SUPABASE_KEY.trim();
-    localStorage.setItem("supabase_publishable_key",SUPABASE_KEY);
-  }else{
-    SUPABASE_KEY = null;
+    localStorage.setItem(KEY_NAME, SUPABASE_KEY);
   }
 }
 
+const $ = id => document.getElementById(id);
 let db = null;
 let products = [];
 
-const $ = id => document.getElementById(id);
-
-function message(text){
+function message(text) {
   $("message").textContent = text;
 }
 
-if(window.supabase && SUPABASE_KEY){
-  db = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-}else if(!window.supabase){
-  message("No se pudo cargar Supabase. Revisa tu conexión a internet.");
-}else{
-  message("Falta la clave pública. Recarga la página para ingresarla.");
+function escapeText(value) {
+  return String(value ?? "");
 }
 
-async function login(){
-  if(!db){
-    message("No hay conexión configurada con Supabase. Recarga la página.");
-    return;
+function formatPrice(price) {
+  if (price === null || price === undefined || price === "") {
+    return "Precio por consultar";
   }
+  return "$" + Number(price).toLocaleString("es-MX", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
 
-  const email = $("email").value.trim();
-  const password = $("password").value;
+function showAdmin() {
+  $("loginPanel").classList.add("hidden");
+  $("adminPanel").classList.remove("hidden");
+}
 
-  if(!email || !password){
-    message("Escribe tu correo y contraseña.");
+function showLogin() {
+  $("adminPanel").classList.add("hidden");
+  $("loginPanel").classList.remove("hidden");
+}
+
+async function login(event) {
+  event.preventDefault();
+
+  if (!db) {
+    alert("No se pudo conectar con Supabase. Revisa la clave pública.");
     return;
   }
 
   $("loginButton").disabled = true;
-  message("Verificando acceso...");
+  $("loginButton").textContent = "Ingresando...";
 
-  try{
-    const {error} = await db.auth.signInWithPassword({email,password});
+  try {
+    const { error } = await db.auth.signInWithPassword({
+      email: $("email").value.trim(),
+      password: $("password").value
+    });
 
-    if(error){
-      message("No se pudo iniciar sesión: "+error.message);
-      return;
-    }
+    if (error) throw error;
 
-    await checkSession();
-  }catch(error){
-    message("Error de conexión: "+error.message);
-  }finally{
+    $("password").value = "";
+    showAdmin();
+    await loadProducts();
+
+  } catch (error) {
+    alert("No se pudo iniciar sesión: " + error.message);
+  } finally {
     $("loginButton").disabled = false;
+    $("loginButton").textContent = "Entrar";
   }
 }
 
-async function logout(){
-  const {error} = await db.auth.signOut();
-
-  if(error){
-    message("Error al cerrar sesión: "+error.message);
-    return;
-  }
-
-  $("panel").classList.add("hidden");
-  $("login").classList.remove("hidden");
-  message("Sesión cerrada.");
+async function logout() {
+  if (!db) return;
+  await db.auth.signOut();
+  products = [];
+  $("productList").replaceChildren();
+  showLogin();
 }
 
-async function checkSession(){
-  const {data,error} = await db.auth.getSession();
+async function checkSession() {
+  if (!db) return;
 
-  if(error){
-    message("Error de sesión: "+error.message);
+  const { data, error } = await db.auth.getSession();
+
+  if (error) {
+    message(error.message);
     return;
   }
 
-  if(!data.session){
-    $("login").classList.remove("hidden");
-    $("panel").classList.add("hidden");
-    return;
+  if (data.session) {
+    showAdmin();
+    await loadProducts();
+  } else {
+    showLogin();
   }
-
-  $("login").classList.add("hidden");
-  $("panel").classList.remove("hidden");
-
-  await loadProducts();
 }
 
-async function loadProducts(){
+async function loadProducts() {
   message("Cargando productos...");
 
-  const {data,error} = await db
-    .from("products")
-    .select("*")
-    .order("id",{ascending:true});
+  try {
+    const { data, error } = await db
+      .from("products")
+      .select("*")
+      .order("id", { ascending: true });
 
-  if(error){
-    message("Error al cargar productos: "+error.message);
+    if (error) throw error;
+
+    products = data || [];
+    renderProducts();
+    message("");
+  } catch (error) {
+    message("Error al cargar productos: " + error.message);
+  }
+}
+
+function renderProducts() {
+  const list = $("productList");
+  list.replaceChildren();
+
+  const term = $("search").value.trim().toLowerCase();
+
+  const filtered = products.filter(p =>
+    escapeText(p.name).toLowerCase().includes(term) ||
+    escapeText(p.brand).toLowerCase().includes(term)
+  );
+
+  $("productCount").textContent =
+    filtered.length + " productos encontrados";
+
+  filtered.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "product";
+
+    const img = document.createElement("img");
+    img.alt = p.name || "Producto";
+
+    if (p.image_path) {
+      const { data } = db.storage
+        .from("productos")
+        .getPublicUrl(p.image_path);
+      img.src = data.publicUrl;
+    }
+
+    const details = document.createElement("div");
+    details.className = "details";
+
+    const name = document.createElement("strong");
+    name.textContent = p.name;
+
+    const info = document.createElement("span");
+    info.className = "muted";
+    info.textContent =
+      (p.brand || "Sin marca") + " · " +
+      (p.category || "Sin categoría") + " · " +
+      formatPrice(p.price);
+
+    details.append(name, info);
+
+    const edit = document.createElement("button");
+    edit.className = "primary";
+    edit.textContent = "Editar";
+    edit.addEventListener("click", () => editProduct(p.id));
+
+    const del = document.createElement("button");
+    del.className = "danger";
+    del.textContent = "Borrar";
+    del.addEventListener("click", () => deleteProduct(p.id));
+
+    item.append(img, details, edit, del);
+    list.append(item);
+  });
+}
+
+function editProduct(id) {
+  const p = products.find(x => Number(x.id) === Number(id));
+
+  if (!p) {
+    message("No se encontró el producto.");
     return;
   }
 
-  products = data || [];
-  renderProducts();
-  message("Productos encontrados: "+products.length);
-}
-
-function escapeHTML(value){
-  return String(value ?? "").replace(/[&<>"']/g,c=>({
-    "&":"&amp;",
-    "<":"&lt;",
-    ">":"&gt;",
-    '"':"&quot;",
-    "'":"&#39;"
-  }[c]));
-}
-
-function renderProducts(){
-  const search = $("search").value.toLowerCase();
-
-  const list = products.filter(p =>
-    (p.name || "").toLowerCase().includes(search) ||
-    (p.brand || "").toLowerCase().includes(search)
-  );
-
-  $("products").innerHTML = list.map(p=>{
-    const photo = p.image_path
-      ? db.storage.from("productos").getPublicUrl(p.image_path).data.publicUrl
-      : "";
-
-    const imageHTML = photo
-      ? `<img src="${escapeHTML(photo)}" alt="Fotografía del producto">`
-      : `<div class="no-photo">Sin foto</div>`;
-
-    const priceText = p.price == null
-      ? "Precio por consultar"
-      : "$"+Number(p.price).toLocaleString("es-MX")+" MXN";
-
-    return `
-      <div class="product">
-        ${imageHTML}
-        <div class="product-info">
-          <strong>${escapeHTML(p.name)}</strong>
-          <small>${escapeHTML(p.brand)} · ${escapeHTML(p.category)}</small>
-          <br><small>${priceText}</small>
-        </div>
-        <div class="actions">
-          <button type="button" onclick="editProduct(${p.id})">Editar</button>
-          <button type="button" class="danger" onclick="deleteProduct(${p.id})">Borrar</button>
-        </div>
-      </div>`;
-  }).join("") || "<p>No se encontraron productos.</p>";
-}
-
-function editProduct(id){
-  const p = products.find(x=>x.id===id);
-  if(!p)return;
-
   $("productId").value = p.id;
-  $("name").value = p.name;
+  $("name").value = p.name || "";
   $("brand").value = p.brand || "";
-  $("category").value = p.category;
+  $("category").value = p.category || "Perfumes";
   $("price").value = p.price ?? "";
   $("photo").value = "";
 
+  $("formTitle").textContent = "Editar producto";
   $("saveButton").textContent = "Actualizar producto";
-  window.scrollTo({top:0,behavior:"smooth"});
-  message("Editando: "+p.name);
+  $("photoHelp").textContent =
+    p.image_path ? "Tiene una fotografía. Selecciona otra solo si deseas cambiarla." :
+    "Este producto todavía no tiene fotografía.";
+
+  $("productForm").scrollIntoView({ behavior: "smooth" });
+  message("Editando: " + p.name);
 }
 
-function resetForm(){
+function resetForm() {
   $("productForm").reset();
   $("productId").value = "";
+  $("formTitle").textContent = "Agregar producto";
   $("saveButton").textContent = "Guardar producto";
-  message("");
+  $("photoHelp").textContent =
+    "Si no seleccionas una fotografía, se conservará la actual al editar.";
 }
 
-async function saveProduct(event){
+async function saveProduct(event) {
   event.preventDefault();
+
+  if (!db) {
+    message("No hay conexión con Supabase.");
+    return;
+  }
 
   const id = $("productId").value;
   const name = $("name").value.trim();
   const brand = $("brand").value.trim();
   const category = $("category").value;
-  const rawPrice = $("price").value;
+  const rawPrice = $("price").value.trim();
   const price = rawPrice === "" ? null : Number(rawPrice);
   const file = $("photo").files[0];
 
-  if(!name){
+  if (!name) {
     message("Escribe el nombre del producto.");
     return;
   }
 
-  if(price !== null && (!Number.isFinite(price) || price < 0)){
+  if (price !== null && (!Number.isFinite(price) || price < 0)) {
     message("El precio no es válido.");
     return;
   }
@@ -302,35 +362,34 @@ async function saveProduct(event){
   $("saveButton").disabled = true;
   message("Guardando producto...");
 
-  try{
+  try {
     const existing = id
-      ? products.find(p=>p.id===Number(id))
+      ? products.find(p => Number(p.id) === Number(id))
       : null;
 
-    if(id && !existing){
-      message("No se encontró el producto que quieres editar.");
-      return;
+    if (id && !existing) {
+      throw new Error("No se encontró el producto que quieres editar.");
     }
 
     let image_path = existing?.image_path || null;
 
-    if(file){
-      if(!file.type.startsWith("image/")){
-        message("Selecciona un archivo de imagen.");
-        return;
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        throw new Error("Selecciona un archivo de imagen válido.");
       }
 
       const extension = file.name.split(".").pop().toLowerCase();
-      const path = Date.now()+"-"+Math.random().toString(36).slice(2)+"."+extension;
+      const path = Date.now() + "-" +
+        Math.random().toString(36).slice(2) + "." + extension;
 
-      const {error:uploadError} = await db.storage
+      const { error: uploadError } = await db.storage
         .from("productos")
-        .upload(path,file,{contentType:file.type});
+        .upload(path, file, {
+          contentType: file.type,
+          upsert: false
+        });
 
-      if(uploadError){
-        message("Error al subir fotografía: "+uploadError.message);
-        return;
-      }
+      if (uploadError) throw uploadError;
 
       image_path = path;
     }
@@ -341,73 +400,91 @@ async function saveProduct(event){
       category,
       price,
       image_path,
-      active:true
+      active: true
     };
 
     let result;
 
-    if(id){
-      result = await db.from("products")
+    if (id) {
+      result = await db
+        .from("products")
         .update(record)
-        .eq("id",Number(id));
-    }else{
-      result = await db.from("products").insert(record);
+        .eq("id", Number(id))
+        .select()
+        .single();
+    } else {
+      result = await db
+        .from("products")
+        .insert(record)
+        .select()
+        .single();
     }
 
-    if(result.error){
-      message("Error al guardar: "+result.error.message);
-      return;
-    }
+    if (result.error) throw result.error;
 
     resetForm();
     await loadProducts();
-    message("Producto guardado correctamente.");
+    message("¡Producto guardado correctamente!");
 
-  }catch(error){
-    message("Error: "+error.message);
-  }finally{
+  } catch (error) {
+    message("Error al guardar: " + error.message);
+  } finally {
     $("saveButton").disabled = false;
   }
 }
 
-async function deleteProduct(id){
-  const p = products.find(x=>x.id===id);
-  if(!p)return;
+async function deleteProduct(id) {
+  const p = products.find(x => Number(x.id) === Number(id));
+  if (!p) return;
 
-  if(!confirm("¿Seguro que deseas eliminar "+p.name+"?"))return;
+  if (!confirm("¿Seguro que deseas borrar " + p.name + "?")) return;
 
-  message("Eliminando producto...");
+  try {
+    message("Eliminando producto...");
 
-  const {error} = await db.from("products").delete().eq("id",id);
+    const { error } = await db
+      .from("products")
+      .delete()
+      .eq("id", Number(id));
 
-  if(error){
-    message("Error al eliminar: "+error.message);
-    return;
-  }
+    if (error) throw error;
 
-  if(p.image_path){
-    const {error:photoError} = await db.storage
-      .from("productos")
-      .remove([p.image_path]);
+    if (p.image_path) {
+      const { error: photoError } = await db.storage
+        .from("productos")
+        .remove([p.image_path]);
 
-    if(photoError){
-      message("Producto eliminado, pero no se pudo borrar su fotografía: "+photoError.message);
-      await loadProducts();
-      return;
+      if (photoError) {
+        message("Producto eliminado, pero no se pudo borrar su fotografía: " +
+          photoError.message);
+        await loadProducts();
+        return;
+      }
     }
-  }
 
-  await loadProducts();
-  message("Producto eliminado correctamente.");
+    await loadProducts();
+    message("Producto eliminado correctamente.");
+
+  } catch (error) {
+    message("Error al borrar: " + error.message);
+  }
 }
 
-$("loginButton").addEventListener("click",login);
-$("logoutButton").addEventListener("click",logout);
-$("productForm").addEventListener("submit",saveProduct);
-$("clearButton").addEventListener("click",resetForm);
-$("search").addEventListener("input",renderProducts);
+$("loginForm").addEventListener("submit", login);
+$("productForm").addEventListener("submit", saveProduct);
+$("logoutButton").addEventListener("click", logout);
+$("cancelButton").addEventListener("click", () => {
+  resetForm();
+  message("");
+});
+$("search").addEventListener("input", renderProducts);
 
-checkSession();
+if (SUPABASE_KEY && window.supabase) {
+  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  checkSession();
+} else {
+  message("No se encontró la clave pública de Supabase. Recarga la página.");
+}
 </script>
 </body>
 </html>
