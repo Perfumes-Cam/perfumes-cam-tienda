@@ -298,6 +298,15 @@ function resetForm(){
 }
 
 async function saveProduct(event){
+  const {data:{user},error}=await db.auth.getUser();
+
+message(
+  error
+    ? "Error de sesión: "+error.message
+    : "Usuario conectado: "+user.id
+);
+
+console.log("Usuario Supabase:",user);
   event.preventDefault();
 
   const id=$("productId").value;
