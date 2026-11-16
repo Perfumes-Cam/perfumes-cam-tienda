@@ -1,456 +1,413 @@
 
-
 <!DOCTYPE html>
-
 <html lang="es">
-
 <head>
-
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>Administrador | Perfumes Cam</title>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-
 *{box-sizing:border-box}
-
-body{margin:0;padding:20px;background:#101010;color:#fff;font-family:Arial,sans-serif}
-
-main{max-width:700px;margin:auto}
-
+body{margin:0;padding:18px;background:#101010;color:#fff;font-family:Arial,sans-serif}
+main{max-width:750px;margin:auto}
 h1,h2{color:#d6b56d}
-
-.card{background:#1c1c1c;padding:20px;border-radius:12px;margin:18px 0}
-
+.card{background:#1c1c1c;padding:18px;border-radius:12px;margin:16px 0}
 input,select,button{width:100%;padding:13px;margin:7px 0;border-radius:7px;border:1px solid #555;font-size:16px}
-
 input,select{background:#292929;color:white}
-
 button{background:#d6b56d;color:#111;border:0;font-weight:bold;cursor:pointer}
-
 .secondary{background:#444;color:white}
-
 .danger{background:#9e3030;color:white}
-
-.product{display:flex;gap:12px;align-items:center;border-bottom:1px solid #444;padding:12px 0}
-
-.product img{width:65px;height:65px;object-fit:cover;border-radius:7px}
-
+.hidden{display:none!important}
+#message{color:#e8c879;white-space:pre-wrap;overflow-wrap:anywhere}
+.product{display:flex;gap:10px;align-items:center;border-bottom:1px solid #444;padding:12px 0}
+.product img,.no-photo{width:65px;height:65px;object-fit:cover;border-radius:7px;flex-shrink:0}
+.no-photo{background:#333;display:grid;place-items:center;font-size:11px;text-align:center}
 .product-info{flex:1;min-width:0}
-
-.product-info strong{display:block}
-
+.product-info strong{display:block;overflow-wrap:anywhere}
 .product-info small{color:#bbb}
-
-.actions{display:flex;gap:6px}
-
-.actions button{padding:9px;font-size:13px}
-
-.hidden{display:none}
-
-#message{color:#e8c879;white-space:pre-wrap}
-
+.actions{display:flex;flex-direction:column;gap:4px;width:76px}
+.actions button{padding:8px 4px;margin:2px 0;font-size:12px}
+.top{display:flex;align-items:center;gap:10px}
+.top h2{flex:1}
+.top button{width:auto}
 </style>
-
 </head>
 
 <body>
-
 <main>
-
 <h1>Perfumes Cam</h1>
-
 <p>Panel de administración</p>
 
 <section id="login" class="card">
-
 <h2>Iniciar sesión</h2>
-
 <input id="email" type="email" placeholder="Correo del administrador">
-
 <input id="password" type="password" placeholder="Contraseña">
-
-<button onclick="login()">Entrar</button>
-
+<button id="loginButton" type="button">Entrar</button>
 </section>
 
 <section id="panel" class="hidden">
 
 <div class="card">
-
-<div style="display:flex;gap:10px;align-items:center">
-
-<h2 style="flex:1">Productos</h2>
-
-<button class="secondary" style="width:auto" onclick="logout()">Salir</button>
-
+<div class="top">
+<h2>Administrar productos</h2>
+<button id="logoutButton" type="button" class="secondary">Salir</button>
 </div>
 
 <form id="productForm">
-
 <input id="productId" type="hidden">
 
 <label>Nombre del producto</label>
-
 <input id="name" required placeholder="Ej. Odyssey Mega">
 
 <label>Marca</label>
-
 <input id="brand" placeholder="Ej. ARMAF">
 
 <label>Categoría</label>
-
 <select id="category">
-
-<option>Perfumes</option>
-
-<option>Decants</option>
-
-<option>Otros</option>
-
+<option value="Perfumes">Perfumes</option>
+<option value="Decants">Decants</option>
+<option value="Otros">Otros</option>
 </select>
 
-<label>Precio en pesos (vacío = por consultar)</label>
+<label>Precio en pesos</label>
+<input id="price" type="number" min="0" step="0.01" placeholder="Vacío = Precio por consultar">
 
-<input id="price" type="number" min="0" step="0.01" placeholder="Ej. 900">
-
-<label>Fotografía del producto</label>
-
+<label>Fotografía</label>
 <input id="photo" type="file" accept="image/*">
 
-<button type="submit">Guardar producto</button>
-
-<button type="button" class="secondary" onclick="resetForm()">Limpiar formulario</button>
-
+<button id="saveButton" type="submit">Guardar producto</button>
+<button type="button" id="clearButton" class="secondary">Limpiar formulario</button>
 </form>
-
 </div>
 
 <div class="card">
-
-<h2>Catálogo</h2>
-
-<input id="search" placeholder="Buscar producto..." oninput="renderProducts()">
-
+<h2>Catálogo de productos</h2>
+<input id="search" placeholder="Buscar producto..." >
 <div id="products"></div>
-
 </div>
 
 </section>
 
 <p id="message"></p>
-
 </main>
 
 <script>
-
 const SUPABASE_URL = "https://aymqmhgsxbckhutrtpvw.supabase.co";
 
-const SUPABASE_KEY = localStorage.getItem("supabase_publishable_key") ||
-  prompt("Pega tu clave pública de Supabase");
+let SUPABASE_KEY = localStorage.getItem("supabase_publishable_key");
 
-if (SUPABASE_KEY) {
-  localStorage.setItem("supabase_publishable_key", SUPABASE_KEY);
+if(!SUPABASE_KEY){
+  SUPABASE_KEY = window.prompt("Pega tu clave pública de Supabase (sb_publishable_)");
+  if(SUPABASE_KEY && SUPABASE_KEY.trim()){
+    SUPABASE_KEY = SUPABASE_KEY.trim();
+    localStorage.setItem("supabase_publishable_key",SUPABASE_KEY);
+  }else{
+    SUPABASE_KEY = null;
+  }
 }
 
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  
+let db = null;
 let products = [];
 
+const $ = id => document.getElementById(id);
+
 function message(text){
+  $("message").textContent = text;
+}
 
-  document.getElementById("message").textContent = text;
-
+if(window.supabase && SUPABASE_KEY){
+  db = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+}else if(!window.supabase){
+  message("No se pudo cargar Supabase. Revisa tu conexión a internet.");
+}else{
+  message("Falta la clave pública. Recarga la página para ingresarla.");
 }
 
 async function login(){
+  if(!db){
+    message("No hay conexión configurada con Supabase. Recarga la página.");
+    return;
+  }
 
-  const email = document.getElementById("email").value.trim();
+  const email = $("email").value.trim();
+  const password = $("password").value;
 
-  const password = document.getElementById("password").value;
+  if(!email || !password){
+    message("Escribe tu correo y contraseña.");
+    return;
+  }
 
-  message("Iniciando sesión...");
+  $("loginButton").disabled = true;
+  message("Verificando acceso...");
 
-  const {error} = await db.auth.signInWithPassword({email,password});
+  try{
+    const {error} = await db.auth.signInWithPassword({email,password});
 
-  if(error){message("Error: "+error.message);return;}
+    if(error){
+      message("No se pudo iniciar sesión: "+error.message);
+      return;
+    }
 
-  await checkSession();
-
+    await checkSession();
+  }catch(error){
+    message("Error de conexión: "+error.message);
+  }finally{
+    $("loginButton").disabled = false;
+  }
 }
 
 async function logout(){
+  const {error} = await db.auth.signOut();
 
-  await db.auth.signOut();
+  if(error){
+    message("Error al cerrar sesión: "+error.message);
+    return;
+  }
 
-  document.getElementById("panel").classList.add("hidden");
-
-  document.getElementById("login").classList.remove("hidden");
-
+  $("panel").classList.add("hidden");
+  $("login").classList.remove("hidden");
   message("Sesión cerrada.");
-
 }
 
 async function checkSession(){
+  const {data,error} = await db.auth.getSession();
 
-  const {data:{session}} = await db.auth.getSession();
-
-  if(!session){
-
-    document.getElementById("login").classList.remove("hidden");
-
-    document.getElementById("panel").classList.add("hidden");
-
+  if(error){
+    message("Error de sesión: "+error.message);
     return;
-
   }
 
-  document.getElementById("login").classList.add("hidden");
+  if(!data.session){
+    $("login").classList.remove("hidden");
+    $("panel").classList.add("hidden");
+    return;
+  }
 
-  document.getElementById("panel").classList.remove("hidden");
+  $("login").classList.add("hidden");
+  $("panel").classList.remove("hidden");
 
   await loadProducts();
-
 }
 
 async function loadProducts(){
-
   message("Cargando productos...");
 
-  const {data,error} = await db.from("products")
+  const {data,error} = await db
+    .from("products")
+    .select("*")
+    .order("id",{ascending:true});
 
-    .select("*").order("id",{ascending:true});
-
-  if(error){message("Error al cargar: "+error.message);return;}
+  if(error){
+    message("Error al cargar productos: "+error.message);
+    return;
+  }
 
   products = data || [];
-
   renderProducts();
-
-  message("Productos cargados: "+products.length);
-
+  message("Productos encontrados: "+products.length);
 }
 
 function escapeHTML(value){
-
-  return String(value).replace(/[&<>"']/g, c => ({
-
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-
+  return String(value ?? "").replace(/[&<>"']/g,c=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
   }[c]));
-
 }
 
 function renderProducts(){
-
-  const search = document.getElementById("search").value.toLowerCase();
+  const search = $("search").value.toLowerCase();
 
   const list = products.filter(p =>
-
     (p.name || "").toLowerCase().includes(search) ||
-
     (p.brand || "").toLowerCase().includes(search)
-
   );
 
-  document.getElementById("products").innerHTML = list.map(p => {
-
+  $("products").innerHTML = list.map(p=>{
     const photo = p.image_path
-
       ? db.storage.from("productos").getPublicUrl(p.image_path).data.publicUrl
-
       : "";
 
+    const imageHTML = photo
+      ? `<img src="${escapeHTML(photo)}" alt="Fotografía del producto">`
+      : `<div class="no-photo">Sin foto</div>`;
+
+    const priceText = p.price == null
+      ? "Precio por consultar"
+      : "$"+Number(p.price).toLocaleString("es-MX")+" MXN";
+
     return `
-
       <div class="product">
-
-        ${photo
-
-          ? `<img src="${photo}" alt="">`
-
-          : `<div style="width:65px;height:65px;background:#333;border-radius:7px;display:grid;place-items:center">Sin foto</div>`}
-
+        ${imageHTML}
         <div class="product-info">
-
           <strong>${escapeHTML(p.name)}</strong>
-
-          <small>${escapeHTML(p.brand || "")} · ${escapeHTML(p.category)}</small><br>
-
-          <small>${p.price == null ? "Precio por consultar" : "$"+Number(p.price).toLocaleString("es-MX")+" MXN"}</small>
-
+          <small>${escapeHTML(p.brand)} · ${escapeHTML(p.category)}</small>
+          <br><small>${priceText}</small>
         </div>
-
         <div class="actions">
-
-          <button onclick="editProduct(${p.id})">Editar</button>
-
-          <button class="danger" onclick="deleteProduct(${p.id})">Borrar</button>
-
+          <button type="button" onclick="editProduct(${p.id})">Editar</button>
+          <button type="button" class="danger" onclick="deleteProduct(${p.id})">Borrar</button>
         </div>
-
       </div>`;
-
   }).join("") || "<p>No se encontraron productos.</p>";
-
 }
 
 function editProduct(id){
-
-  const p = products.find(x => x.id === id);
-
+  const p = products.find(x=>x.id===id);
   if(!p)return;
 
-  document.getElementById("productId").value = p.id;
+  $("productId").value = p.id;
+  $("name").value = p.name;
+  $("brand").value = p.brand || "";
+  $("category").value = p.category;
+  $("price").value = p.price ?? "";
+  $("photo").value = "";
 
-  document.getElementById("name").value = p.name;
-
-  document.getElementById("brand").value = p.brand || "";
-
-  document.getElementById("category").value = p.category;
-
-  document.getElementById("price").value = p.price ?? "";
-
-  document.getElementById("photo").value = "";
-
+  $("saveButton").textContent = "Actualizar producto";
   window.scrollTo({top:0,behavior:"smooth"});
-
   message("Editando: "+p.name);
-
 }
 
 function resetForm(){
-
-  document.getElementById("productForm").reset();
-
-  document.getElementById("productId").value = "";
-
+  $("productForm").reset();
+  $("productId").value = "";
+  $("saveButton").textContent = "Guardar producto";
   message("");
-
 }
 
-document.getElementById("productForm").addEventListener("submit", async e => {
+async function saveProduct(event){
+  event.preventDefault();
 
-  e.preventDefault();
-
-  const id = document.getElementById("productId").value;
-
-  const name = document.getElementById("name").value.trim();
-
-  const brand = document.getElementById("brand").value.trim();
-
-  const category = document.getElementById("category").value;
-
-  const rawPrice = document.getElementById("price").value;
-
+  const id = $("productId").value;
+  const name = $("name").value.trim();
+  const brand = $("brand").value.trim();
+  const category = $("category").value;
+  const rawPrice = $("price").value;
   const price = rawPrice === "" ? null : Number(rawPrice);
+  const file = $("photo").files[0];
 
-  const file = document.getElementById("photo").files[0];
+  if(!name){
+    message("Escribe el nombre del producto.");
+    return;
+  }
 
-  if(!name){message("Escribe el nombre del producto.");return;}
+  if(price !== null && (!Number.isFinite(price) || price < 0)){
+    message("El precio no es válido.");
+    return;
+  }
 
+  $("saveButton").disabled = true;
   message("Guardando producto...");
 
-  let image_path = id
+  try{
+    const existing = id
+      ? products.find(p=>p.id===Number(id))
+      : null;
 
-    ? products.find(p => p.id === Number(id)).image_path
-
-    : null;
-
-  if(file){
-
-    const extension = file.name.split(".").pop().toLowerCase();
-
-    const path = "productos/" + Date.now() + "-" +
-
-      Math.random().toString(36).slice(2) + "." + extension;
-
-    const {error:uploadError} = await db.storage
-
-      .from("productos")
-
-      .upload(path,file,{contentType:file.type});
-
-    if(uploadError){
-
-      message("Error al subir foto: "+uploadError.message);
-
+    if(id && !existing){
+      message("No se encontró el producto que quieres editar.");
       return;
-
     }
 
-    image_path = path;
+    let image_path = existing?.image_path || null;
 
+    if(file){
+      if(!file.type.startsWith("image/")){
+        message("Selecciona un archivo de imagen.");
+        return;
+      }
+
+      const extension = file.name.split(".").pop().toLowerCase();
+      const path = Date.now()+"-"+Math.random().toString(36).slice(2)+"."+extension;
+
+      const {error:uploadError} = await db.storage
+        .from("productos")
+        .upload(path,file,{contentType:file.type});
+
+      if(uploadError){
+        message("Error al subir fotografía: "+uploadError.message);
+        return;
+      }
+
+      image_path = path;
+    }
+
+    const record = {
+      name,
+      brand,
+      category,
+      price,
+      image_path,
+      active:true
+    };
+
+    let result;
+
+    if(id){
+      result = await db.from("products")
+        .update(record)
+        .eq("id",Number(id));
+    }else{
+      result = await db.from("products").insert(record);
+    }
+
+    if(result.error){
+      message("Error al guardar: "+result.error.message);
+      return;
+    }
+
+    resetForm();
+    await loadProducts();
+    message("Producto guardado correctamente.");
+
+  }catch(error){
+    message("Error: "+error.message);
+  }finally{
+    $("saveButton").disabled = false;
   }
-
-  const record = {name,brand,category,price,image_path,active:true};
-
-  let result;
-
-  if(id){
-
-    result = await db.from("products").update(record).eq("id",Number(id));
-
-  }else{
-
-    result = await db.from("products").insert(record);
-
-  }
-
-  if(result.error){
-
-    message("Error al guardar: "+result.error.message);
-
-    return;
-
-  }
-
-  resetForm();
-
-  await loadProducts();
-
-  message("Producto guardado correctamente.");
-
-});
+}
 
 async function deleteProduct(id){
+  const p = products.find(x=>x.id===id);
+  if(!p)return;
 
-  const p = products.find(x => x.id === id);
+  if(!confirm("¿Seguro que deseas eliminar "+p.name+"?"))return;
 
-  if(!p || !confirm("¿Eliminar "+p.name+"?"))return;
-
-  message("Eliminando...");
+  message("Eliminando producto...");
 
   const {error} = await db.from("products").delete().eq("id",id);
 
   if(error){
-
     message("Error al eliminar: "+error.message);
-
     return;
-
   }
 
   if(p.image_path){
+    const {error:photoError} = await db.storage
+      .from("productos")
+      .remove([p.image_path]);
 
-    await db.storage.from("productos").remove([p.image_path]);
-
+    if(photoError){
+      message("Producto eliminado, pero no se pudo borrar su fotografía: "+photoError.message);
+      await loadProducts();
+      return;
+    }
   }
 
   await loadProducts();
-
   message("Producto eliminado correctamente.");
-
 }
 
+$("loginButton").addEventListener("click",login);
+$("logoutButton").addEventListener("click",logout);
+$("productForm").addEventListener("submit",saveProduct);
+$("clearButton").addEventListener("click",resetForm);
+$("search").addEventListener("input",renderProducts);
+
 checkSession();
-
 </script>
-
 </body>
-
 </html>
