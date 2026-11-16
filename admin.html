@@ -1,0 +1,451 @@
+
+
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Administrador | Perfumes Cam</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+*{box-sizing:border-box}
+
+body{margin:0;padding:20px;background:#101010;color:#fff;font-family:Arial,sans-serif}
+
+main{max-width:700px;margin:auto}
+
+h1,h2{color:#d6b56d}
+
+.card{background:#1c1c1c;padding:20px;border-radius:12px;margin:18px 0}
+
+input,select,button{width:100%;padding:13px;margin:7px 0;border-radius:7px;border:1px solid #555;font-size:16px}
+
+input,select{background:#292929;color:white}
+
+button{background:#d6b56d;color:#111;border:0;font-weight:bold;cursor:pointer}
+
+.secondary{background:#444;color:white}
+
+.danger{background:#9e3030;color:white}
+
+.product{display:flex;gap:12px;align-items:center;border-bottom:1px solid #444;padding:12px 0}
+
+.product img{width:65px;height:65px;object-fit:cover;border-radius:7px}
+
+.product-info{flex:1;min-width:0}
+
+.product-info strong{display:block}
+
+.product-info small{color:#bbb}
+
+.actions{display:flex;gap:6px}
+
+.actions button{padding:9px;font-size:13px}
+
+.hidden{display:none}
+
+#message{color:#e8c879;white-space:pre-wrap}
+
+</style>
+
+</head>
+
+<body>
+
+<main>
+
+<h1>Perfumes Cam</h1>
+
+<p>Panel de administración</p>
+
+<section id="login" class="card">
+
+<h2>Iniciar sesión</h2>
+
+<input id="email" type="email" placeholder="Correo del administrador">
+
+<input id="password" type="password" placeholder="Contraseña">
+
+<button onclick="login()">Entrar</button>
+
+</section>
+
+<section id="panel" class="hidden">
+
+<div class="card">
+
+<div style="display:flex;gap:10px;align-items:center">
+
+<h2 style="flex:1">Productos</h2>
+
+<button class="secondary" style="width:auto" onclick="logout()">Salir</button>
+
+</div>
+
+<form id="productForm">
+
+<input id="productId" type="hidden">
+
+<label>Nombre del producto</label>
+
+<input id="name" required placeholder="Ej. Odyssey Mega">
+
+<label>Marca</label>
+
+<input id="brand" placeholder="Ej. ARMAF">
+
+<label>Categoría</label>
+
+<select id="category">
+
+<option>Perfumes</option>
+
+<option>Decants</option>
+
+<option>Otros</option>
+
+</select>
+
+<label>Precio en pesos (vacío = por consultar)</label>
+
+<input id="price" type="number" min="0" step="0.01" placeholder="Ej. 900">
+
+<label>Fotografía del producto</label>
+
+<input id="photo" type="file" accept="image/*">
+
+<button type="submit">Guardar producto</button>
+
+<button type="button" class="secondary" onclick="resetForm()">Limpiar formulario</button>
+
+</form>
+
+</div>
+
+<div class="card">
+
+<h2>Catálogo</h2>
+
+<input id="search" placeholder="Buscar producto..." oninput="renderProducts()">
+
+<div id="products"></div>
+
+</div>
+
+</section>
+
+<p id="message"></p>
+
+</main>
+
+<script>
+
+const SUPABASE_URL = "https://aymqmhgsxbckhutrtpvw.supabase.co/rest/v1/";
+
+const SUPABASE_KEY = "sb_publishable_c0VBOKa-ilQbVFjIVUEu4w_z5xeNW-W";
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let products = [];
+
+function message(text){
+
+  document.getElementById("message").textContent = text;
+
+}
+
+async function login(){
+
+  const email = document.getElementById("email").value.trim();
+
+  const password = document.getElementById("password").value;
+
+  message("Iniciando sesión...");
+
+  const {error} = await db.auth.signInWithPassword({email,password});
+
+  if(error){message("Error: "+error.message);return;}
+
+  await checkSession();
+
+}
+
+async function logout(){
+
+  await db.auth.signOut();
+
+  document.getElementById("panel").classList.add("hidden");
+
+  document.getElementById("login").classList.remove("hidden");
+
+  message("Sesión cerrada.");
+
+}
+
+async function checkSession(){
+
+  const {data:{session}} = await db.auth.getSession();
+
+  if(!session){
+
+    document.getElementById("login").classList.remove("hidden");
+
+    document.getElementById("panel").classList.add("hidden");
+
+    return;
+
+  }
+
+  document.getElementById("login").classList.add("hidden");
+
+  document.getElementById("panel").classList.remove("hidden");
+
+  await loadProducts();
+
+}
+
+async function loadProducts(){
+
+  message("Cargando productos...");
+
+  const {data,error} = await db.from("products")
+
+    .select("*").order("id",{ascending:true});
+
+  if(error){message("Error al cargar: "+error.message);return;}
+
+  products = data || [];
+
+  renderProducts();
+
+  message("Productos cargados: "+products.length);
+
+}
+
+function escapeHTML(value){
+
+  return String(value).replace(/[&<>"']/g, c => ({
+
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+
+  }[c]));
+
+}
+
+function renderProducts(){
+
+  const search = document.getElementById("search").value.toLowerCase();
+
+  const list = products.filter(p =>
+
+    (p.name || "").toLowerCase().includes(search) ||
+
+    (p.brand || "").toLowerCase().includes(search)
+
+  );
+
+  document.getElementById("products").innerHTML = list.map(p => {
+
+    const photo = p.image_path
+
+      ? db.storage.from("productos").getPublicUrl(p.image_path).data.publicUrl
+
+      : "";
+
+    return `
+
+      <div class="product">
+
+        ${photo
+
+          ? `<img src="${photo}" alt="">`
+
+          : `<div style="width:65px;height:65px;background:#333;border-radius:7px;display:grid;place-items:center">Sin foto</div>`}
+
+        <div class="product-info">
+
+          <strong>${escapeHTML(p.name)}</strong>
+
+          <small>${escapeHTML(p.brand || "")} · ${escapeHTML(p.category)}</small><br>
+
+          <small>${p.price == null ? "Precio por consultar" : "$"+Number(p.price).toLocaleString("es-MX")+" MXN"}</small>
+
+        </div>
+
+        <div class="actions">
+
+          <button onclick="editProduct(${p.id})">Editar</button>
+
+          <button class="danger" onclick="deleteProduct(${p.id})">Borrar</button>
+
+        </div>
+
+      </div>`;
+
+  }).join("") || "<p>No se encontraron productos.</p>";
+
+}
+
+function editProduct(id){
+
+  const p = products.find(x => x.id === id);
+
+  if(!p)return;
+
+  document.getElementById("productId").value = p.id;
+
+  document.getElementById("name").value = p.name;
+
+  document.getElementById("brand").value = p.brand || "";
+
+  document.getElementById("category").value = p.category;
+
+  document.getElementById("price").value = p.price ?? "";
+
+  document.getElementById("photo").value = "";
+
+  window.scrollTo({top:0,behavior:"smooth"});
+
+  message("Editando: "+p.name);
+
+}
+
+function resetForm(){
+
+  document.getElementById("productForm").reset();
+
+  document.getElementById("productId").value = "";
+
+  message("");
+
+}
+
+document.getElementById("productForm").addEventListener("submit", async e => {
+
+  e.preventDefault();
+
+  const id = document.getElementById("productId").value;
+
+  const name = document.getElementById("name").value.trim();
+
+  const brand = document.getElementById("brand").value.trim();
+
+  const category = document.getElementById("category").value;
+
+  const rawPrice = document.getElementById("price").value;
+
+  const price = rawPrice === "" ? null : Number(rawPrice);
+
+  const file = document.getElementById("photo").files[0];
+
+  if(!name){message("Escribe el nombre del producto.");return;}
+
+  message("Guardando producto...");
+
+  let image_path = id
+
+    ? products.find(p => p.id === Number(id)).image_path
+
+    : null;
+
+  if(file){
+
+    const extension = file.name.split(".").pop().toLowerCase();
+
+    const path = "productos/" + Date.now() + "-" +
+
+      Math.random().toString(36).slice(2) + "." + extension;
+
+    const {error:uploadError} = await db.storage
+
+      .from("productos")
+
+      .upload(path,file,{contentType:file.type});
+
+    if(uploadError){
+
+      message("Error al subir foto: "+uploadError.message);
+
+      return;
+
+    }
+
+    image_path = path;
+
+  }
+
+  const record = {name,brand,category,price,image_path,active:true};
+
+  let result;
+
+  if(id){
+
+    result = await db.from("products").update(record).eq("id",Number(id));
+
+  }else{
+
+    result = await db.from("products").insert(record);
+
+  }
+
+  if(result.error){
+
+    message("Error al guardar: "+result.error.message);
+
+    return;
+
+  }
+
+  resetForm();
+
+  await loadProducts();
+
+  message("Producto guardado correctamente.");
+
+});
+
+async function deleteProduct(id){
+
+  const p = products.find(x => x.id === id);
+
+  if(!p || !confirm("¿Eliminar "+p.name+"?"))return;
+
+  message("Eliminando...");
+
+  const {error} = await db.from("products").delete().eq("id",id);
+
+  if(error){
+
+    message("Error al eliminar: "+error.message);
+
+    return;
+
+  }
+
+  if(p.image_path){
+
+    await db.storage.from("productos").remove([p.image_path]);
+
+  }
+
+  await loadProducts();
+
+  message("Producto eliminado correctamente.");
+
+}
+
+checkSession();
+
+</script>
+
+</body>
+
+</html>
