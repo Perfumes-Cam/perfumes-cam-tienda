@@ -348,6 +348,8 @@ async function saveProduct(event) {
   const rawPrice = $("price").value.trim();
   const price = rawPrice === "" ? null : Number(rawPrice);
   const file = $("photo").files[0];
+  console.log("Fotografía seleccionada:", file);
+message(file ? "Fotografía detectada: " + file.name : "No se seleccionó ninguna fotografía.");
 
   if (!name) {
     message("Escribe el nombre del producto.");
