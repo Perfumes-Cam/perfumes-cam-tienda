@@ -169,7 +169,7 @@ async function loadProducts() {
     .from("products")
     .select("*")
     .eq("active", true)
-    .order("id");
+    .order("name", { ascending: true });
 
   if (error) {
     console.error("Error cargando productos:", error);
